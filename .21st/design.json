@@ -1,0 +1,136 @@
+{
+  "version": 1,
+  "project": {
+    "name": "react-example",
+    "productType": null,
+    "stack": [
+      "react",
+      "tailwind-v4",
+      "vite"
+    ]
+  },
+  "sources": {
+    "tokens": [
+      "src/index.css"
+    ],
+    "components": [],
+    "assets": [
+      "src/assets"
+    ],
+    "instructions": []
+  },
+  "design": {
+    "colorMode": "light",
+    "colors": {
+      "--color-primary": {
+        "value": "#075E54",
+        "source": "src/index.css"
+      },
+      "--color-primary-hover": {
+        "value": "#064E46",
+        "source": "src/index.css"
+      },
+      "--color-secondary": {
+        "value": "#128C7E",
+        "source": "src/index.css"
+      },
+      "--color-secondary-hover": {
+        "value": "#0F766A",
+        "source": "src/index.css"
+      },
+      "--color-light-green": {
+        "value": "#DCF8C6",
+        "source": "src/index.css"
+      },
+      "--color-background": {
+        "value": "#ECE5DD",
+        "source": "src/index.css"
+      },
+      "--color-surface": {
+        "value": "#FFFFFF",
+        "source": "src/index.css"
+      },
+      "--color-text-dark": {
+        "value": "#111B21",
+        "source": "src/index.css"
+      },
+      "--color-text-muted": {
+        "value": "#667781",
+        "source": "src/index.css"
+      },
+      "--color-border": {
+        "value": "#D1D7DB",
+        "source": "src/index.css"
+      }
+    },
+    "typography": {
+      "--font-sans": {
+        "value": "\"Poppins\", sans-serif",
+        "source": "src/index.css"
+      },
+      "--font-heading": {
+        "value": "\"Poppins\", sans-serif",
+        "source": "src/index.css"
+      },
+      "--font-mono": {
+        "value": "\"Poppins\", sans-serif",
+        "source": "src/index.css"
+      },
+      "--font-app": {
+        "value": "\"Poppins\", sans-serif",
+        "source": "src/index.css"
+      }
+    },
+    "spacing": {},
+    "radius": {
+      "--radius-sm": {
+        "value": "6px",
+        "source": "src/index.css"
+      },
+      "--radius-md": {
+        "value": "10px",
+        "source": "src/index.css"
+      },
+      "--radius-lg": {
+        "value": "14px",
+        "source": "src/index.css"
+      }
+    },
+    "shadows": {},
+    "motion": {},
+    "density": "unknown"
+  },
+  "components": {
+    "installed": [],
+    "preferredPrimitives": [],
+    "patterns": []
+  },
+  "constraints": {
+    "must": [],
+    "avoid": []
+  },
+  "decisions": [],
+  "evidence": [
+    {
+      "fact": "design.colorMode:light",
+      "source": "src/index.css"
+    },
+    {
+      "fact": "design.tokens",
+      "source": "src/index.css"
+    },
+    {
+      "fact": "project.stack:react",
+      "source": "package.json"
+    },
+    {
+      "fact": "project.stack:tailwind-v4",
+      "source": "package.json"
+    },
+    {
+      "fact": "project.stack:vite",
+      "source": "package.json"
+    }
+  ],
+  "generatedAt": "2026-10-18T16:13:14.948Z"
+}

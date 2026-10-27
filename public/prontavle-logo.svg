@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 36" width="160" height="36" fill="none">
+  <!-- Prontavle Modern Vector Logo -->
+  <g id="prontavle-mark">
+    <!-- Outer rounded tech diamond mark -->
+    <rect x="4" y="4" width="28" height="28" rx="7" fill="#075E54" />
+    <!-- Gradient accent overlay -->
+    <path d="M4 18 C4 10.268 10.268 4 18 4 L32 18 L18 32 C10.268 32 4 25.732 4 18 Z" fill="#128C7E" opacity="0.6" />
+    <!-- Dynamic geometric check / P flourish in vibrant mint -->
+    <path d="M12 21 L16 25 L24 13" stroke="#DCF8C6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <circle cx="23" cy="11" r="2" fill="#DCF8C6" />
+  </g>
+  <!-- Brand Typography: PRONTAVLE -->
+  <text x="38" y="23" font-family="'Poppins', 'Segoe UI', system-ui, sans-serif" font-size="15" font-weight="700" fill="#111B21" letter-spacing="0.5">PRONTAVLE</text>
+  <text x="135" y="16" font-family="'Poppins', 'Segoe UI', system-ui, sans-serif" font-size="8" font-weight="600" fill="#128C7E">™</text>
+  <text x="39" y="31" font-family="'Poppins', 'Segoe UI', system-ui, sans-serif" font-size="6.5" font-weight="500" fill="#667781" letter-spacing="1.2">ENTERPRISE CLOUD</text>
+</svg>
