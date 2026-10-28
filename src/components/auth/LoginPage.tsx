@@ -33,6 +33,7 @@ import { INITIAL_ORGANIZATION } from '../../lib/initialData';
 import { offlineStore } from '../../lib/offlineStore';
 import {
   isSupabaseConfigured,
+  getSupabaseConfigStatus,
   signInWithSupabase,
   signUpWithSupabase,
   onboardBusinessInSupabase,
@@ -96,7 +97,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
     // Commercial authentication requires configured Supabase cloud backend
     if (!isSupabaseConfigured()) {
-      setErrorMessage('Authentication service is unavailable. Please check your Supabase configuration or contact your system administrator.');
+      const status = getSupabaseConfigStatus();
+      setErrorMessage(`Authentication service is unavailable. ${status.message}`);
       return;
     }
 

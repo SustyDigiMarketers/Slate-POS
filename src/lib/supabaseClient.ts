@@ -42,22 +42,49 @@ const getEnvVar = (key: string): string | undefined => {
   return undefined;
 };
 
-const supabaseUrl = getEnvVar('VITE_SUPABASE_URL');
-const supabaseAnonKey = getEnvVar('VITE_SUPABASE_ANON_KEY');
-
-let clientInstance: SupabaseClient | null = null;
+/**
+ * Clean and format Supabase URL string by trimming whitespace and removing
+ * trailing slashes and API subpaths (/rest/v1, /auth/v1) if mistakenly included in env vars.
+ */
+export function sanitizeSupabaseUrl(rawUrl: string | undefined): string | undefined {
+  if (!rawUrl) return undefined;
+  let cleaned = rawUrl.trim();
+  // Strip trailing slashes and common API subpaths
+  cleaned = cleaned.replace(/\/rest\/v1\/?$/i, '');
+  cleaned = cleaned.replace(/\/auth\/v1\/?$/i, '');
+  cleaned = cleaned.replace(/\/+$/, '');
+  return cleaned;
+}
 
 /**
- * Returns true if Supabase URL and anon key are properly configured in client environment.
+ * Retrieve active Supabase client key supporting standard naming conventions:
+ * VITE_SUPABASE_ANON_KEY, VITE_SUPABASE_PUBLISHABLE_KEY, or SUPABASE_ANON_KEY.
+ */
+export function getSupabaseKey(): string | undefined {
+  return (
+    getEnvVar('VITE_SUPABASE_ANON_KEY') ||
+    getEnvVar('VITE_SUPABASE_PUBLISHABLE_KEY') ||
+    getEnvVar('SUPABASE_ANON_KEY')
+  );
+}
+
+let clientInstance: SupabaseClient | null = null;
+let currentClientUrl: string | undefined = undefined;
+let currentClientKey: string | undefined = undefined;
+
+/**
+ * Returns true if Supabase URL and anon/publishable key are properly configured in client environment.
  */
 export function isSupabaseConfigured(): boolean {
+  const url = sanitizeSupabaseUrl(getEnvVar('VITE_SUPABASE_URL') || getEnvVar('SUPABASE_URL'));
+  const key = getSupabaseKey();
   return Boolean(
-    supabaseUrl &&
-    supabaseAnonKey &&
-    supabaseUrl.startsWith('http') &&
-    supabaseAnonKey.length > 10 &&
-    !supabaseUrl.includes('your-project.supabase.co') &&
-    supabaseAnonKey !== 'your-supabase-anon-key-here'
+    url &&
+    key &&
+    url.startsWith('http') &&
+    key.length > 10 &&
+    !url.includes('your-project.supabase.co') &&
+    key !== 'your-supabase-anon-key-here'
   );
 }
 
@@ -70,24 +97,26 @@ export function getSupabaseConfigStatus(): {
   hasKey: boolean;
   message: string;
 } {
+  const url = sanitizeSupabaseUrl(getEnvVar('VITE_SUPABASE_URL') || getEnvVar('SUPABASE_URL'));
+  const key = getSupabaseKey();
   const hasUrl = Boolean(
-    supabaseUrl &&
-    supabaseUrl.startsWith('http') &&
-    !supabaseUrl.includes('your-project.supabase.co')
+    url &&
+    url.startsWith('http') &&
+    !url.includes('your-project.supabase.co')
   );
   const hasKey = Boolean(
-    supabaseAnonKey &&
-    supabaseAnonKey.length > 10 &&
-    supabaseAnonKey !== 'your-supabase-anon-key-here'
+    key &&
+    key.length > 10 &&
+    key !== 'your-supabase-anon-key-here'
   );
   const isConfigured = hasUrl && hasKey;
   let message = 'Supabase PostgreSQL connected';
   if (!hasUrl && !hasKey) {
-    message = 'VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are missing in environment.';
+    message = 'VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY (or VITE_SUPABASE_PUBLISHABLE_KEY) are missing in environment.';
   } else if (!hasUrl) {
-    message = 'VITE_SUPABASE_URL is not configured or contains placeholder.';
+    message = 'VITE_SUPABASE_URL is not configured or contains invalid URL/path.';
   } else if (!hasKey) {
-    message = 'VITE_SUPABASE_ANON_KEY is missing or invalid.';
+    message = 'VITE_SUPABASE_ANON_KEY (or VITE_SUPABASE_PUBLISHABLE_KEY) is missing or invalid.';
   }
   return { isConfigured, hasUrl, hasKey, message };
 }
@@ -100,8 +129,11 @@ export function getSupabase(): SupabaseClient | null {
     return null;
   }
 
-  if (!clientInstance) {
-    clientInstance = createClient(supabaseUrl!, supabaseAnonKey!, {
+  const url = sanitizeSupabaseUrl(getEnvVar('VITE_SUPABASE_URL') || getEnvVar('SUPABASE_URL'))!;
+  const key = getSupabaseKey()!;
+
+  if (!clientInstance || currentClientUrl !== url || currentClientKey !== key) {
+    clientInstance = createClient(url, key, {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
@@ -111,6 +143,8 @@ export function getSupabase(): SupabaseClient | null {
         schema: 'public',
       },
     });
+    currentClientUrl = url;
+    currentClientKey = key;
   }
 
   return clientInstance;
@@ -1021,9 +1055,10 @@ export async function signInWithSupabase(
 ): Promise<{ success: boolean; error?: string; user?: any; session?: any }> {
   const supabase = getSupabase();
   if (!supabase) {
+    const status = getSupabaseConfigStatus();
     return {
       success: false,
-      error: 'Supabase authentication service is not configured. Please define VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your environment configuration.',
+      error: `Authentication service is unavailable. ${status.message}`,
     };
   }
 
@@ -1033,7 +1068,15 @@ export async function signInWithSupabase(
       password,
     });
     if (error) {
-      return { success: false, error: error.message };
+      let msg = error.message;
+      if (error.status === 400 || msg.toLowerCase().includes('invalid login credentials')) {
+        msg = 'Invalid email or password. Please verify your credentials and try again.';
+      } else if (msg.toLowerCase().includes('email not confirmed')) {
+        msg = 'Your email address has not been confirmed. Please check your inbox or Supabase project settings.';
+      } else if (msg.toLowerCase().includes('invalid path')) {
+        msg = 'Invalid Supabase API endpoint configuration. Please verify VITE_SUPABASE_URL in project settings (must not include /rest/v1 subpath).';
+      }
+      return { success: false, error: msg };
     }
     return { success: true, user: data.user, session: data.session };
   } catch (err: any) {
@@ -1305,19 +1348,51 @@ export async function fetchUserProfile(
     }
 
     const { data, error } = await query.limit(1).maybeSingle();
-    if (error || !data) return null;
+    if (error) {
+      console.warn('Supabase fetchUserProfile primary query error:', error.message);
+    }
+    if (data) {
+      return {
+        id: data.id,
+        name: data.name,
+        email: data.email,
+        phone: data.phone || '',
+        role: data.role as UserRole,
+        organizationId: data.organization_id,
+        branchId: data.branch_id,
+        avatarUrl: data.avatar_url || undefined,
+        permissions: (data.permissions as any) || [],
+      };
+    }
 
-    return {
-      id: data.id,
-      name: data.name,
-      email: data.email,
-      phone: data.phone || '',
-      role: data.role as UserRole,
-      organizationId: data.organization_id,
-      branchId: data.branch_id,
-      avatarUrl: data.avatar_url || undefined,
-      permissions: (data.permissions as any) || [],
-    };
+    // Secondary fallback: search explicitly by email if primary query returned null
+    if (email) {
+      const { data: emailData, error: emailErr } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('email', email)
+        .limit(1)
+        .maybeSingle();
+
+      if (emailErr) {
+        console.warn('Supabase fetchUserProfile email fallback error:', emailErr.message);
+      }
+      if (emailData) {
+        return {
+          id: emailData.id,
+          name: emailData.name,
+          email: emailData.email,
+          phone: emailData.phone || '',
+          role: emailData.role as UserRole,
+          organizationId: emailData.organization_id,
+          branchId: emailData.branch_id,
+          avatarUrl: emailData.avatar_url || undefined,
+          permissions: (emailData.permissions as any) || [],
+        };
+      }
+    }
+
+    return null;
   } catch (err) {
     console.warn('Failed to fetch user profile from Supabase:', err);
     return null;

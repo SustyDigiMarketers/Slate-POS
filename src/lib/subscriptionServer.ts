@@ -127,21 +127,35 @@ export function resolveAuthoritativePlan(planId: string, interval: 'MONTHLY' | '
  * Returns an authenticated Supabase client using server-side service role key or anon key
  */
 let serverSupabaseInstance: SupabaseClient | null = null;
-export function getServerSupabase(): SupabaseClient | null {
-  const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+let currentServerUrl: string | undefined = undefined;
+let currentServerKey: string | undefined = undefined;
 
-  if (!url || !key || key.includes('placeholder') || key.includes('your-supabase')) {
+export function getServerSupabase(): SupabaseClient | null {
+  const rawUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+  const key =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.VITE_SUPABASE_ANON_KEY ||
+    process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.SUPABASE_ANON_KEY;
+
+  if (!rawUrl || !key || key.includes('placeholder') || key.includes('your-supabase')) {
     return null;
   }
 
-  if (!serverSupabaseInstance) {
+  let url = rawUrl.trim();
+  url = url.replace(/\/rest\/v1\/?$/i, '');
+  url = url.replace(/\/auth\/v1\/?$/i, '');
+  url = url.replace(/\/+$/, '');
+
+  if (!serverSupabaseInstance || currentServerUrl !== url || currentServerKey !== key) {
     serverSupabaseInstance = createClient(url, key, {
       auth: {
         persistSession: false,
         autoRefreshToken: false,
       },
     });
+    currentServerUrl = url;
+    currentServerKey = key;
   }
 
   return serverSupabaseInstance;
