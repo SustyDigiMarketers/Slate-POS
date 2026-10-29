@@ -174,7 +174,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         },
         {
           id: 'PRODUCTS',
-          label: 'Product Catalogue',
+          label: 'Products',
           icon: <Package className="w-4 h-4 shrink-0" />,
         },
       ],
@@ -184,7 +184,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       items: [
         {
           id: 'POS',
-          label: 'POS Checkout',
+          label: 'Checkout',
           icon: <ShoppingCart className="w-4 h-4 shrink-0" />,
           shortcut: 'F2',
         },
@@ -205,12 +205,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
         },
         {
           id: 'CHALLANS',
-          label: 'Delivery Challans',
+          label: 'Delivery',
           icon: <Truck className="w-4 h-4 shrink-0" />,
         },
         {
           id: 'PAYMENTS',
-          label: 'Payments Received',
+          label: 'Payments',
           icon: <Wallet className="w-4 h-4 shrink-0" />,
         },
       ],
@@ -220,7 +220,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       items: [
         {
           id: 'EXPENSES',
-          label: 'Operating Expenses',
+          label: 'Expenses',
           icon: <Wallet className="w-4 h-4 shrink-0" />,
         },
         {

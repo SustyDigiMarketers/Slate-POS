@@ -21,6 +21,7 @@ import {
   ArrowDownLeft,
 } from 'lucide-react';
 import { ModuleActionMenu } from '../common/ModuleActionMenu';
+import { AddCustomerModal } from './AddCustomerModal';
 
 export const CustomerLedger: React.FC = () => {
   const [customers, setCustomers] = useState<Customer[]>(offlineStore.getCustomers());
@@ -255,104 +256,13 @@ export const CustomerLedger: React.FC = () => {
       </div>
 
       {/* ADD CUSTOMER MODAL */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl border border-[#D1D7DB] w-full max-w-md p-6 space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-[#D1D7DB]">
-              <h3 className="text-sm font-bold text-[#111B21]">Register New Customer</h3>
-              <button onClick={() => setIsAddModalOpen(false)} className="text-[#667781] hover:text-[#111B21] cursor-pointer">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleAddCustomerSubmit} className="space-y-3 text-xs">
-              <div>
-                <label className="font-semibold text-[#111B21] block mb-1">Company / Customer Name</label>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. SRS Logistics &amp; Supplies"
-                  className="w-full px-3 py-1.5 border border-[#D1D7DB] rounded focus:border-[#128C7E] outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="font-semibold text-[#111B21] block mb-1">Phone (+91)</label>
-                  <input
-                    type="text"
-                    required
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+91 98450 12345"
-                    className="w-full px-3 py-1.5 tabular-nums border border-[#D1D7DB] rounded focus:border-[#128C7E] outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="font-semibold text-[#111B21] block mb-1">Email (Optional)</label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="billing@company.com"
-                    className="w-full px-3 py-1.5 border border-[#D1D7DB] rounded focus:border-[#128C7E] outline-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="font-semibold text-[#111B21] block mb-1">GSTIN (15 Digits for B2B Tax Invoicing)</label>
-                <input
-                  type="text"
-                  value={gstin}
-                  onChange={(e) => setGstin(e.target.value.toUpperCase())}
-                  placeholder="29AABCU9603R1ZM"
-                  className="w-full px-3 py-1.5 tabular-nums uppercase border border-[#D1D7DB] rounded focus:border-[#128C7E] outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="font-semibold text-[#111B21] block mb-1">Authorized Credit Limit (INR)</label>
-                <input
-                  type="number"
-                  value={creditLimit}
-                  onChange={(e) => setCreditLimit(parseFloat(e.target.value) || 0)}
-                  className="w-full px-3 py-1.5 tabular-nums border border-[#D1D7DB] rounded focus:border-[#128C7E] outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="font-semibold text-[#111B21] block mb-1">Billing Address</label>
-                <textarea
-                  rows={2}
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  placeholder="Shop / Office address..."
-                  className="w-full px-3 py-1.5 border border-[#D1D7DB] rounded focus:border-[#128C7E] outline-none"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2 border-t border-[#D1D7DB]">
-                <button
-                  type="button"
-                  onClick={() => setIsAddModalOpen(false)}
-                  className="px-3 py-1.5 text-[#667781] hover:bg-[#F7F5F2] rounded cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-1.5 font-bold bg-[#075E54] text-white rounded hover:bg-[#128C7E] cursor-pointer"
-                >
-                  Save Account
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <AddCustomerModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSuccess={() => {
+          setCustomers(offlineStore.getCustomers());
+        }}
+      />
 
       {/* RECEIVE PAYMENT MODAL */}
       {isReceivePaymentOpen && selectedCustomer && (

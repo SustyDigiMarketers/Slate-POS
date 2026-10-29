@@ -15,9 +15,49 @@ export interface VercelResponse {
 }
 
 import {
-  authenticateSupabaseRequest,
   getServerSupabase,
 } from '../src/lib/subscriptionServer';
+
+const STATE_CODE_MAP: Record<string, string> = {
+  'JAMMU & KASHMIR': '01',
+  'HIMACHAL PRADESH': '02',
+  'PUNJAB': '03',
+  'CHANDIGARH': '04',
+  'UTTARAKHAND': '05',
+  'HARYANA': '06',
+  'DELHI': '07',
+  'RAJASTHAN': '08',
+  'UTTAR PRADESH': '09',
+  'BIHAR': '10',
+  'WEST BENGAL': '19',
+  'JHARKHAND': '20',
+  'ODISHA': '21',
+  'CHHATTISGARH': '22',
+  'MADHYA PRADESH': '23',
+  'GUJARAT': '24',
+  'MAHARASHTRA': '27',
+  'KARNATAKA': '29',
+  'GOA': '30',
+  'KERALA': '32',
+  'TAMIL NADU': '33',
+  'PUDUCHERRY': '34',
+  'TELANGANA': '36',
+  'ANDHRA PRADESH': '37',
+};
+
+function resolveStateCode(stateName: string, suppliedCode?: string, gstin?: string | null): string {
+  if (suppliedCode && suppliedCode.trim().length === 2 && !isNaN(Number(suppliedCode))) {
+    return suppliedCode.trim();
+  }
+  if (gstin && gstin.trim().length >= 2) {
+    const prefix = gstin.trim().substring(0, 2);
+    if (!isNaN(Number(prefix))) {
+      return prefix;
+    }
+  }
+  const normalized = (stateName || '').trim().toUpperCase();
+  return STATE_CODE_MAP[normalized] || '29';
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -76,6 +116,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     stateCode,
     phone,
     planId,
+    subscription_plan_id,
+    subscriptionPlanId,
   } = req.body || {};
 
   if (!businessName || businessName.trim().length < 2) {
@@ -86,12 +128,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const orgId = `org_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
-  const cleanGstin = (gstin || '29AAAAA0000A1Z5').toUpperCase().trim();
-  const cleanPan = (pan || cleanGstin.substring(2, 12) || 'AAAAA0000A').toUpperCase().trim();
-  const cleanState = state || 'Karnataka';
-  const cleanStateCode = stateCode || cleanGstin.substring(0, 2) || '29';
-  const cleanPhone = phone || '+91 98000 00000';
-  const targetPlan = planId || 'plan_growth_monthly';
+  
+  // Clean GSTIN and PAN: if not provided or blank, set to NULL rather than fabricated strings
+  const rawGstin = (gstin || '').toString().trim().toUpperCase();
+  const cleanGstin = rawGstin.length >= 15 ? rawGstin : null;
+
+  const rawPan = (pan || '').toString().trim().toUpperCase();
+  const cleanPan = rawPan.length >= 10
+    ? rawPan
+    : (cleanGstin ? cleanGstin.substring(2, 12) : null);
+
+  const cleanState = (state || 'Karnataka').trim();
+  const cleanStateCode = resolveStateCode(cleanState, stateCode, cleanGstin);
+  const cleanPhone = (phone || '').trim() || '+91 98000 00000';
+  const targetPlan = planId || subscription_plan_id || subscriptionPlanId || 'plan_starter_monthly';
 
   if (supabase) {
     try {
@@ -137,8 +187,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       success: true,
       organizationId: orgId,
       branchId: `br_${orgId.slice(4)}_main`,
-      subscriptionStatus: 'TRIALING',
-      trialEndsAt: new Date(Date.now() + 14 * 86400000).toISOString(),
+      subscriptionStatus: 'ACTIVE',
+      trialEndsAt: new Date(Date.now() + 30 * 86400000).toISOString(),
     },
   });
 }

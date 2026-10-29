@@ -39,6 +39,18 @@ import {
   StagedRow,
 } from '../../lib/bulkDataManagement';
 import { offlineStore } from '../../lib/offlineStore';
+import { PaymentRecord } from '../../types';
+import {
+  downloadTallyCustomerExcelTemplate,
+  downloadTallySupplierExcelTemplate,
+  downloadTallyPaymentsExcel,
+  downloadTallyExpensesExcel,
+  parseTallyWorkbook,
+  validateAndStageTallyCustomers,
+  validateAndStageTallySuppliers,
+  validateAndStageTallyPayments,
+  validateAndStageTallyExpenses,
+} from '../../lib/tallyIntegration';
 
 export interface ModuleActionMenuProps {
   moduleKey: SupportedModule;
@@ -128,8 +140,29 @@ export const ModuleActionMenu: React.FC<ModuleActionMenuProps> = ({
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  // 1. IMPORT ACTION — DOWNLOAD TEMPLATE
+  // 1. IMPORT ACTION — DOWNLOAD TEMPLATE (TallyPrime Excel & CSV)
   const handleDownloadTemplate = () => {
+    if (moduleKey === 'CUSTOMERS') {
+      downloadTallyCustomerExcelTemplate();
+      showToast('TallyPrime Customer Master Excel Template (AllAccountingMasters.xlsx) downloaded.');
+      return;
+    }
+    if (moduleKey === 'SUPPLIERS') {
+      downloadTallySupplierExcelTemplate();
+      showToast('TallyPrime Supplier Master Excel Template (AllAccountingMasters.xlsx) downloaded.');
+      return;
+    }
+    if (moduleKey === 'PAYMENTS') {
+      downloadTallyPaymentsExcel([], [], true);
+      showToast('TallyPrime Receipt Voucher Excel Template (AccountingVouchers.xlsx) downloaded.');
+      return;
+    }
+    if (moduleKey === 'EXPENSES') {
+      downloadTallyExpensesExcel([], true);
+      showToast('TallyPrime Expense Voucher Excel Template (AccountingVouchers.xlsx) downloaded.');
+      return;
+    }
+
     if (!config) return;
     const headerLine = config.templateHeaders.join(',');
     const exampleLine = config.exampleRow.map((v) => (v.includes(',') ? `"${v}"` : v)).join(',');
@@ -138,57 +171,108 @@ export const ModuleActionMenu: React.FC<ModuleActionMenuProps> = ({
     showToast(`Template "${config.templateFileName}" downloaded with column guides.`);
   };
 
-  // 1. IMPORT ACTION — SELECT & VALIDATE CSV
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // 1. IMPORT ACTION — SELECT & VALIDATE EXCEL (.XLSX) OR CSV
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.name.toLowerCase().endsWith('.csv') && !file.name.toLowerCase().endsWith('.tsv')) {
-      showToast('Please select a valid .csv file.', 'warning');
+    const lowerName = file.name.toLowerCase();
+    const isExcel = lowerName.endsWith('.xlsx') || lowerName.endsWith('.xls');
+    const isCsv = lowerName.endsWith('.csv') || lowerName.endsWith('.tsv');
+
+    if (!isExcel && !isCsv) {
+      showToast('Please select a valid Excel (.xlsx) or CSV file.', 'warning');
       return;
     }
 
     setSelectedFile(file);
     setIsParsing(true);
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const text = event.target?.result as string;
-        const parsed = parseCsv(text);
-        if (parsed.rows.length === 0) {
-          showToast('The selected file contains no data rows.', 'warning');
+    try {
+      if (isExcel) {
+        const { rows } = await parseTallyWorkbook(file);
+        if (rows.length === 0) {
+          showToast('The selected Excel workbook contains no data rows.', 'warning');
           setValidationResult(null);
           setIsParsing(false);
           return;
         }
 
-        const result = config.validateAndStage(parsed.rows);
+        let result: ImportValidationResult;
+        if (moduleKey === 'CUSTOMERS') {
+          const tallyRes = validateAndStageTallyCustomers(rows);
+          result = { ...tallyRes, headers: config?.templateHeaders || [] };
+        } else if (moduleKey === 'SUPPLIERS') {
+          const tallyRes = validateAndStageTallySuppliers(rows);
+          result = { ...tallyRes, headers: config?.templateHeaders || [] };
+        } else if (moduleKey === 'PAYMENTS') {
+          const tallyRes = validateAndStageTallyPayments(rows);
+          result = { ...tallyRes, headers: config?.templateHeaders || [] };
+        } else if (moduleKey === 'EXPENSES') {
+          const tallyRes = validateAndStageTallyExpenses(rows);
+          result = { ...tallyRes, headers: config?.templateHeaders || [] };
+        } else {
+          result = config.validateAndStage(rows);
+        }
+
         setValidationResult(result);
         setIsParsing(false);
-      } catch (err: any) {
-        showToast(`Failed to parse CSV file: ${err.message}`, 'warning');
-        setIsParsing(false);
+      } else {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const text = event.target?.result as string;
+            const parsed = parseCsv(text);
+            if (parsed.rows.length === 0) {
+              showToast('The selected file contains no data rows.', 'warning');
+              setValidationResult(null);
+              setIsParsing(false);
+              return;
+            }
+
+            let result: ImportValidationResult;
+            if (moduleKey === 'CUSTOMERS') {
+              const tallyRes = validateAndStageTallyCustomers(parsed.rows);
+              result = { ...tallyRes, headers: config?.templateHeaders || [] };
+            } else if (moduleKey === 'SUPPLIERS') {
+              const tallyRes = validateAndStageTallySuppliers(parsed.rows);
+              result = { ...tallyRes, headers: config?.templateHeaders || [] };
+            } else if (moduleKey === 'PAYMENTS') {
+              const tallyRes = validateAndStageTallyPayments(parsed.rows);
+              result = { ...tallyRes, headers: config?.templateHeaders || [] };
+            } else if (moduleKey === 'EXPENSES') {
+              const tallyRes = validateAndStageTallyExpenses(parsed.rows);
+              result = { ...tallyRes, headers: config?.templateHeaders || [] };
+            } else {
+              result = config.validateAndStage(parsed.rows);
+            }
+
+            setValidationResult(result);
+            setIsParsing(false);
+          } catch (err: any) {
+            showToast(`Failed to parse CSV file: ${err.message}`, 'warning');
+            setIsParsing(false);
+          }
+        };
+        reader.readAsText(file);
       }
-    };
-    reader.onerror = () => {
-      showToast('Error reading the selected file.', 'warning');
+    } catch (err: any) {
+      showToast(`Error parsing workbook: ${err.message}`, 'warning');
       setIsParsing(false);
-    };
-    reader.readAsText(file);
+    }
   };
 
   // 1. IMPORT ACTION — DOWNLOAD ERROR REPORT
   const handleDownloadErrorReport = () => {
     if (!validationResult || !validationResult.errorReportCsv) return;
-    downloadCsv(`${moduleKey}_Import_Validation_Errors.csv`, validationResult.errorReportCsv);
+    downloadCsv(`${moduleKey}_Tally_Validation_Errors.csv`, validationResult.errorReportCsv);
     showToast('Validation error report downloaded.');
   };
 
   // 1. IMPORT ACTION — COMMIT BATCH
   const handleCommitImport = () => {
     if (!validationResult || validationResult.validCount === 0) return;
-    const summary = config.commitBatch(validationResult.stagedRows);
+    const summary = config ? config.commitBatch(validationResult.stagedRows) : { message: 'Records imported successfully.' };
     setIsConfirmCommitOpen(false);
     setIsImportModalOpen(false);
     setSelectedFile(null);
@@ -198,13 +282,38 @@ export const ModuleActionMenu: React.FC<ModuleActionMenuProps> = ({
     showToast(summary.message);
   };
 
-  // 2. EXPORT ACTION
+  // 2. EXPORT ACTION (TallyPrime Excel & CSV Formats)
   const handleExport = () => {
     setIsOpen(false);
     if (onExportOverride) {
       onExportOverride();
       return;
     }
+
+    if (moduleKey === 'CUSTOMERS') {
+      downloadTallyCustomerExcelTemplate(offlineStore.getCustomers());
+      showToast('Exported customers to TallyPrime AllAccountingMasters.xlsx format.');
+      return;
+    }
+    if (moduleKey === 'SUPPLIERS') {
+      downloadTallySupplierExcelTemplate(offlineStore.getSuppliers());
+      showToast('Exported suppliers to TallyPrime AllAccountingMasters.xlsx format.');
+      return;
+    }
+    if (moduleKey === 'PAYMENTS') {
+      const sales = offlineStore.getSales();
+      const paymentsList: PaymentRecord[] = [];
+      sales.forEach((s) => paymentsList.push(...s.payments));
+      downloadTallyPaymentsExcel(paymentsList, sales);
+      showToast('Exported payment receipts to TallyPrime AccountingVouchers.xlsx format.');
+      return;
+    }
+    if (moduleKey === 'EXPENSES') {
+      downloadTallyExpensesExcel(offlineStore.getExpenses());
+      showToast('Exported operating expenses to TallyPrime AccountingVouchers.xlsx format.');
+      return;
+    }
+
     if (!config) return;
     const { filename, content, count } = config.exportCsv(activeSearchTerm);
     downloadCsv(filename, content);

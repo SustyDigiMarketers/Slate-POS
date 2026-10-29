@@ -1340,44 +1340,73 @@ export async function fetchUserProfile(
   if (!supabase) return null;
 
   try {
-    let query = supabase.from('user_profiles').select('*');
-    if (email) {
-      query = query.or(`auth_user_id.eq.${authUserId},id.eq.${authUserId},email.eq.${email}`);
-    } else {
-      query = query.or(`auth_user_id.eq.${authUserId},id.eq.${authUserId}`);
+    const cleanEmail = email ? email.trim().toLowerCase() : undefined;
+
+    // 1. Primary lookup by auth_user_id or profile id matching Auth UUID
+    if (authUserId) {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .or(`auth_user_id.eq.${authUserId},id.eq.${authUserId}`)
+        .eq('is_active', true)
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.warn('Supabase fetchUserProfile primary query error:', error.message);
+      }
+
+      if (data) {
+        if (cleanEmail && data.email && data.email.trim().toLowerCase() !== cleanEmail) {
+          console.warn('Supabase fetchUserProfile email mismatch across tenant profile', {
+            expected: cleanEmail,
+            found: data.email,
+          });
+          return null;
+        }
+
+        return {
+          id: data.id,
+          name: data.name,
+          email: data.email,
+          phone: data.phone || '',
+          role: data.role as UserRole,
+          organizationId: data.organization_id,
+          branchId: data.branch_id,
+          avatarUrl: data.avatar_url || undefined,
+          permissions: (data.permissions as any) || [],
+        };
+      }
     }
 
-    const { data, error } = await query.limit(1).maybeSingle();
-    if (error) {
-      console.warn('Supabase fetchUserProfile primary query error:', error.message);
-    }
-    if (data) {
-      return {
-        id: data.id,
-        name: data.name,
-        email: data.email,
-        phone: data.phone || '',
-        role: data.role as UserRole,
-        organizationId: data.organization_id,
-        branchId: data.branch_id,
-        avatarUrl: data.avatar_url || undefined,
-        permissions: (data.permissions as any) || [],
-      };
-    }
-
-    // Secondary fallback: search explicitly by email if primary query returned null
-    if (email) {
+    // 2. Secondary fallback lookup by email if auth_user_id wasn't linked yet
+    if (cleanEmail) {
       const { data: emailData, error: emailErr } = await supabase
         .from('user_profiles')
         .select('*')
-        .eq('email', email)
+        .eq('email', cleanEmail)
+        .eq('is_active', true)
         .limit(1)
         .maybeSingle();
 
       if (emailErr) {
         console.warn('Supabase fetchUserProfile email fallback error:', emailErr.message);
       }
+
       if (emailData) {
+        // Link auth_user_id to user_profiles if missing
+        if (authUserId && (!emailData.auth_user_id || emailData.auth_user_id !== authUserId)) {
+          supabase
+            .from('user_profiles')
+            .update({ auth_user_id: authUserId, updated_at: new Date().toISOString() })
+            .eq('id', emailData.id)
+            .then(({ error: updateErr }) => {
+              if (updateErr) {
+                console.warn('Failed to auto-link auth_user_id on user_profiles:', updateErr.message);
+              }
+            });
+        }
+
         return {
           id: emailData.id,
           name: emailData.name,
@@ -1398,6 +1427,68 @@ export async function fetchUserProfile(
     return null;
   }
 }
+
+/**
+ * Fetches store branches belonging strictly to the specified organization.
+ */
+export async function fetchOrganizationBranches(organizationId: string): Promise<Branch[] | null> {
+  const supabase = getSupabase();
+  if (!supabase) return null;
+
+  try {
+    const { data, error } = await supabase
+      .from('stores')
+      .select('*')
+      .eq('organization_id', organizationId)
+      .eq('is_active', true);
+
+    if (error || !data) return null;
+
+    return data.map((row: any) => ({
+      id: row.id,
+      organizationId: row.organization_id,
+      code: row.code || 'MAIN-01',
+      name: row.name,
+      city: row.city,
+      state: row.state,
+      address: row.address,
+      phone: row.phone,
+      isMainBranch: Boolean(row.is_headquarters),
+      activeTerminalCount: row.max_terminals || 4,
+    }));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Fetches subscription status for the given organization.
+ */
+export async function fetchOrganizationSubscription(
+  organizationId: string
+): Promise<{ status: string; planId: string } | null> {
+  const supabase = getSupabase();
+  if (!supabase) return null;
+
+  try {
+    const { data, error } = await supabase
+      .from('business_subscriptions')
+      .select('status, plan_id')
+      .eq('organization_id', organizationId)
+      .limit(1)
+      .maybeSingle();
+
+    if (error || !data) return null;
+
+    return {
+      status: data.status,
+      planId: data.plan_id,
+    };
+  } catch {
+    return null;
+  }
+}
+
 
 /**
  * Idempotently pushes a batch of sync outbox items to Supabase or server sync proxy.

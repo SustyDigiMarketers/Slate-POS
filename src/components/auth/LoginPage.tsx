@@ -39,6 +39,8 @@ import {
   onboardBusinessInSupabase,
   resetPasswordWithSupabase,
   fetchUserProfile,
+  fetchOrganizationBranches,
+  fetchOrganizationSubscription,
 } from '../../lib/supabaseClient';
 
 interface LoginPageProps {
@@ -124,19 +126,50 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         return;
       }
 
-      const activeBranches = offlineStore.getBranches();
-
-      // Post-authentication branch resolution: Determine authorized branch from trusted profile
-      const userBranchId = profile.branchId;
-      const validBranch = activeBranches.find((b) => b.id === userBranchId) || activeBranches[0];
-
-      // If no valid branch exists, deny access
-      if (!validBranch) {
+      // Profile email verification
+      if (profile.email && profile.email.trim().toLowerCase() !== trimmedEmail.toLowerCase()) {
         setErrorMessage(
-          'Access Denied: Your account does not have a valid authorized branch assignment. Please contact your organization administrator.'
+          'Access Denied: Authenticated identity does not match profile authorization. Contact administrator.'
         );
         setIsLoading(false);
         return;
+      }
+
+      // Check organization subscription status
+      const subInfo = await fetchOrganizationSubscription(profile.organizationId);
+      if (subInfo && (subInfo.status === 'EXPIRED' || subInfo.status === 'CANCELLED')) {
+        setErrorMessage(
+          `Access Denied: Your business organization subscription status is ${subInfo.status}. Please renew your subscription plan.`
+        );
+        setIsLoading(false);
+        return;
+      }
+
+      // Fetch organization branches strictly for this user's organization
+      const remoteBranches = await fetchOrganizationBranches(profile.organizationId);
+      const orgBranches = remoteBranches && remoteBranches.length > 0
+        ? remoteBranches
+        : offlineStore.getBranches().filter((b) => b.organizationId === profile.organizationId);
+
+      // Post-authentication branch resolution: Determine authorized branch from trusted profile
+      const userBranchId = profile.branchId;
+      const validBranch =
+        orgBranches.find((b) => b.id === userBranchId) ||
+        orgBranches.find((b) => b.isMainBranch) ||
+        (orgBranches.length > 0 ? orgBranches[0] : null);
+
+      // CRITICAL SECURITY ENFORCEMENT: Never fall back to an unrelated tenant's branch (e.g. Apex Retail's br_blr_01)!
+      if (!validBranch || (validBranch.organizationId && validBranch.organizationId !== profile.organizationId)) {
+        setErrorMessage(
+          'Access Denied: Your assigned branch could not be resolved for your organization. Contact your organization administrator.'
+        );
+        setIsLoading(false);
+        return;
+      }
+
+      // Register organization branches in offlineStore to set tenant context
+      if (orgBranches.length > 0) {
+        offlineStore.setBranches(orgBranches);
       }
 
       offlineStore.login(profile.id, validBranch.id, profile);
@@ -240,6 +273,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         gstin: regGstin,
         state: regState,
         phone: regPhone,
+        planId: 'plan_starter_monthly',
         accessToken: signUpRes.session?.access_token,
       });
 

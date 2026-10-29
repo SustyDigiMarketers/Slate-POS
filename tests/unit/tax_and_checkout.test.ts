@@ -10,6 +10,14 @@ import { calculateCartItem, calculateCartTotals } from '../../src/lib/taxCalcula
 import { formatINR } from '../../src/lib/formatters';
 import { Product, PaymentRecord } from '../../src/types';
 import {
+  TALLY_LEDGER_HEADERS,
+  TALLY_VOUCHER_HEADERS,
+  validateAndStageTallyCustomers,
+  validateAndStageTallySuppliers,
+  validateAndStageTallyPayments,
+  validateAndStageTallyExpenses,
+} from '../../src/lib/tallyIntegration';
+import {
   canAccessView,
   getDefaultViewForRole,
   canManagerManageRole,
@@ -789,6 +797,85 @@ async function runTestSuite() {
   // TEST 50: Split Payment & Payment Reconciliation Semantics
   assert(finalRecon20261031Src.includes("v_pay_status := 'PENDING'"), 'Non-cash tenders default to PENDING');
   assert(finalRecon20261031Src.includes("CASE WHEN v_verified_paid >= v_calculated_grand_total THEN 'PAID'"), 'Sale status derived from verified payment totals');
+
+  // TEST 51: Migration 20261102000000 & Unregistered Business GSTIN/PAN Nullability
+  const repairMigrationPath = path.resolve(process.cwd(), 'supabase/migrations/20261102000000_repair_and_onboard_test_tenants.sql');
+  assert(fs.existsSync(repairMigrationPath), '20261102000000_repair_and_onboard_test_tenants.sql migration file exists');
+  const repairMigrationSrc = fs.readFileSync(repairMigrationPath, 'utf-8');
+
+  assert(repairMigrationSrc.includes('ALTER TABLE public.organizations ALTER COLUMN gstin DROP NOT NULL;'), 'Drops NOT NULL constraint on organizations.gstin');
+  assert(repairMigrationSrc.includes('ALTER TABLE public.organizations ALTER COLUMN pan DROP NOT NULL;'), 'Drops NOT NULL constraint on organizations.pan');
+  assert(repairMigrationSrc.includes('ALTER TABLE public.stores ALTER COLUMN gstin DROP NOT NULL;'), 'Drops NOT NULL constraint on stores.gstin');
+
+  // TEST 52: Slate CRM Tenant Provisioning Verification
+  assert(repairMigrationSrc.includes('org_slate_crm_01'), 'Provisions Slate CRM organization record');
+  assert(repairMigrationSrc.includes('sherin@slatepos.com'), 'Binds Slate CRM user profile to sherin@slatepos.com');
+  assert(repairMigrationSrc.includes('0fd8b6d6-8b59-4802-b11e-3153b5356e15'), 'Links Auth UUID 0fd8b6d6-8b59-4802-b11e-3153b5356e15 to Slate CRM owner profile');
+  assert(repairMigrationSrc.includes('plan_starter_monthly'), 'Configures plan_starter_monthly for Slate CRM');
+
+  // TEST 53: Slate Billing Tenant Provisioning Verification
+  assert(repairMigrationSrc.includes('org_slate_billing_01'), 'Provisions Slate Billing organization record');
+  assert(repairMigrationSrc.includes('test1@gmail.com'), 'Binds Slate Billing user profile to test1@gmail.com');
+  assert(repairMigrationSrc.includes('7b8579fc-651d-4e23-b929-2ba3ef9bf8ed'), 'Links Auth UUID 7b8579fc-651d-4e23-b929-2ba3ef9bf8ed to Slate Billing owner profile');
+  assert(repairMigrationSrc.includes('plan_enterprise_monthly'), 'Configures plan_enterprise_monthly for Slate Billing');
+
+  // TEST 54: Tenant Profile & Branch Resolution Boundaries
+  assert(repairMigrationSrc.includes('br_slate_crm_main'), 'Assigns isolated branch br_slate_crm_main to Slate CRM');
+  assert(repairMigrationSrc.includes('br_slate_billing_main'), 'Assigns isolated branch br_slate_billing_main to Slate Billing');
+
+  // TEST 55: TallyPrime Masters Ledger Header Verification (AllAccountingMasters.xlsx)
+  assert(TALLY_LEDGER_HEADERS.length === 12, 'TALLY_LEDGER_HEADERS defines exact 12 columns');
+  assert(TALLY_LEDGER_HEADERS[0] === 'Name' && TALLY_LEDGER_HEADERS[1] === 'Group Name', 'TALLY_LEDGER_HEADERS starts with Name and Group Name');
+  assert(TALLY_LEDGER_HEADERS[11] === 'Pincode', 'TALLY_LEDGER_HEADERS ends with Pincode');
+
+  // TEST 56: TallyPrime Accounting Voucher Header Verification (AccountingVouchers.xlsx)
+  assert(TALLY_VOUCHER_HEADERS.length === 14, 'TALLY_VOUCHER_HEADERS defines exact 14 columns');
+  assert(TALLY_VOUCHER_HEADERS[13] === 'Change Mode ', 'TALLY_VOUCHER_HEADERS includes exact trailing space in Change Mode ');
+  assert(TALLY_VOUCHER_HEADERS[1] === 'Voucher Type' && TALLY_VOUCHER_HEADERS[5] === 'Dr/Cr', 'TALLY_VOUCHER_HEADERS includes Voucher Type and Dr/Cr');
+
+  // TEST 57: Tally Customer Staging & Validation
+  const validCustStaged = validateAndStageTallyCustomers([{ name: 'Sri Krishna Traders', openingbalance: '25000', drcr: 'Dr' }]);
+  assert(validCustStaged.validCount === 1, 'Valid Tally customer record passes validation');
+  assert(validCustStaged.stagedRows[0].parsedData.currentReceivableBalance === 25000, 'Tally customer Debit opening balance mapped to positive receivable');
+
+  const invalidCustStaged = validateAndStageTallyCustomers([{ name: '', openingbalance: '1000' }]);
+  assert(invalidCustStaged.invalidCount === 1, 'Tally customer record missing Name fails validation');
+
+  // TEST 58: Tally Supplier Staging & Validation
+  const suppStaged = validateAndStageTallySuppliers([{ name: 'Chennai Wholesalers', openingbalance: '50000' }]);
+  assert(suppStaged.validCount === 1, 'Valid Tally supplier record passes validation');
+  assert(suppStaged.stagedRows[0].parsedData.openingBalance === 50000, 'Tally supplier opening balance parsed correctly');
+
+  // TEST 59: Tally Payment Receipt Voucher Staging & Validation
+  const paymentStaged = validateAndStageTallyPayments([{ voucherdate: '2026-10-29', vouchertype: 'Receipt', vouchernumber: 'RCT-1001', ledgername: 'Sri Krishna Traders', amount: '5000', drcr: 'Cr' }]);
+  assert(paymentStaged.validCount === 1, 'Valid Tally receipt voucher record passes validation');
+  assert(paymentStaged.stagedRows[0].parsedData.amount === 5000, 'Tally receipt voucher amount parsed correctly');
+
+  // TEST 60: Tally Expense Voucher Staging & Validation
+  const expenseStaged = validateAndStageTallyExpenses([{ voucherdate: '2026-10-29', vouchertype: 'Payment', vouchernumber: 'EXP-2001', ledgername: 'Electricity Expense', amount: '4500', drcr: 'Dr' }]);
+  assert(expenseStaged.validCount === 1, 'Valid Tally expense payment voucher record passes validation');
+  assert(expenseStaged.stagedRows[0].parsedData.category === 'Electricity', 'Tally expense category derived from ledger name');
+
+  // TEST 61: Sidebar Navigation Label Updates Verification
+  const sidebarPath = path.resolve(process.cwd(), 'src/components/layout/Sidebar.tsx');
+  assert(fs.existsSync(sidebarPath), 'Sidebar.tsx component file exists');
+  const sidebarSrc = fs.readFileSync(sidebarPath, 'utf-8');
+
+  assert(sidebarSrc.includes("label: 'Products'"), 'Sidebar displays Products label for PRODUCTS');
+  assert(sidebarSrc.includes("label: 'Checkout'"), 'Sidebar displays Checkout label for POS');
+  assert(sidebarSrc.includes("label: 'Delivery'"), 'Sidebar displays Delivery label for CHALLANS');
+  assert(sidebarSrc.includes("label: 'Payments'"), 'Sidebar displays Payments label for PAYMENTS');
+  assert(sidebarSrc.includes("label: 'Expenses'"), 'Sidebar displays Expenses label for EXPENSES');
+
+  // TEST 62: SplashScreen Solid Background & Video Container Transparency Verification
+  const splashCheckPath = path.resolve(process.cwd(), 'src/components/auth/SplashScreen.tsx');
+  assert(fs.existsSync(splashCheckPath), 'SplashScreen.tsx component file exists');
+  const splashCheckSrc = fs.readFileSync(splashCheckPath, 'utf-8');
+
+  assert(splashCheckSrc.includes('bg-[#075E54]'), 'SplashScreen uses solid primary background color');
+  assert(!splashCheckSrc.includes('bg-gradient-to-b'), 'SplashScreen contains zero background gradient');
+  assert(splashCheckSrc.includes('mix-blend-screen'), 'SplashScreen logo video uses screen blend mode for transparent background');
+  assert(!splashCheckSrc.includes('drop-shadow-md'), 'SplashScreen logo video and mark contain zero drop shadows');
 
   console.log(`\nTest Execution Summary: ${passed} Passed, ${failed} Failed\n`);
   if (failed > 0) {
