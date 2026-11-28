@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 60" width="240" height="60" fill="none">
+  <!-- SLATE POS Official Brand Vector Mark -->
+  <g id="slate-logo-symbol">
+    <!-- Outer Rounded Base with Theme Deep Emerald -->
+    <rect x="6" y="6" width="48" height="48" rx="12" fill="#075E54" />
+    
+    <!-- Gradient Inner Sheen -->
+    <path d="M6 30 C6 16.745 16.745 6 30 6 L54 30 L30 54 C16.745 54 6 43.255 6 30 Z" fill="#128C7E" opacity="0.65" />
+    
+    <!-- Geometric Tech Slate Tile Accent -->
+    <rect x="15" y="15" width="30" height="30" rx="8" stroke="#DCF8C6" stroke-width="2.5" stroke-opacity="0.8" />
+    
+    <!-- Dynamic POS Checkmark Flourish in Mint -->
+    <path d="M20 31 L27 38 L40 22" stroke="#DCF8C6" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+    <circle cx="39" cy="19" r="2.5" fill="#DCF8C6" />
+  </g>
+
+  <!-- Typography: SLATE POS -->
+  <g id="slate-logo-text">
+    <text x="68" y="36" font-family="'Poppins', 'Segoe UI', system-ui, -apple-system, sans-serif" font-size="24" font-weight="800" fill="#111B21" letter-spacing="1.2">SLATE</text>
+    <text x="155" y="36" font-family="'Poppins', 'Segoe UI', system-ui, -apple-system, sans-serif" font-size="24" font-weight="700" fill="#075E54" letter-spacing="0.8">POS</text>
+    <rect x="207" y="20" width="24" height="14" rx="4" fill="#DCF8C6" />
+    <text x="211" y="30.5" font-family="'Poppins', 'Segoe UI', system-ui, sans-serif" font-size="8.5" font-weight="800" fill="#075E54" letter-spacing="0.5">PRO</text>
+    <text x="69" y="49" font-family="'Poppins', 'Segoe UI', system-ui, -apple-system, sans-serif" font-size="9" font-weight="600" fill="#667781" letter-spacing="2.2">ENTERPRISE RETAIL</text>
+  </g>
+</svg>

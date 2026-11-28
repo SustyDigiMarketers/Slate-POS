@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420" width="640" height="420" fill="none">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="640" y2="420" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#124866" />
+      <stop offset="100%" stop-color="#16587B" />
+    </linearGradient>
+    <linearGradient id="cardGlow" x1="120" y1="70" x2="520" y2="350" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#F5EEDD" stop-opacity="0.16" />
+      <stop offset="100%" stop-color="#84B3CE" stop-opacity="0.10" />
+    </linearGradient>
+  </defs>
+
+  <rect width="640" height="420" rx="20" fill="url(#bgGrad)" />
+  <circle cx="530" cy="80" r="110" fill="#84B3CE" fill-opacity="0.22" />
+  <circle cx="105" cy="340" r="95" fill="#F5EEDD" fill-opacity="0.10" />
+
+  <!-- Subtle architectural grid -->
+  <g stroke="#F5EEDD" stroke-opacity="0.07" stroke-width="1">
+    <line x1="80" y1="0" x2="80" y2="420" />
+    <line x1="200" y1="0" x2="200" y2="420" />
+    <line x1="320" y1="0" x2="320" y2="420" />
+    <line x1="440" y1="0" x2="440" y2="420" />
+    <line x1="560" y1="0" x2="560" y2="420" />
+    <line x1="0" y1="90" x2="640" y2="90" />
+    <line x1="0" y1="210" x2="640" y2="210" />
+    <line x1="0" y1="330" x2="640" y2="330" />
+  </g>
+
+  <!-- Main Ledger & POS Analytics Workspace Card -->
+  <rect x="76" y="54" width="488" height="312" rx="18" fill="url(#cardGlow)" stroke="#84B3CE" stroke-opacity="0.35" stroke-width="1.5" />
+
+  <!-- Top window bar -->
+  <rect x="96" y="74" width="448" height="36" rx="10" fill="#0F405B" fill-opacity="0.9" />
+  <circle cx="118" cy="92" r="5" fill="#F5EEDD" fill-opacity="0.85" />
+  <circle cx="136" cy="92" r="5" fill="#84B3CE" fill-opacity="0.9" />
+  <circle cx="154" cy="92" r="5" fill="#F5EEDD" fill-opacity="0.45" />
+  <rect x="190" y="85" width="160" height="14" rx="7" fill="#F5EEDD" fill-opacity="0.18" />
+  <rect x="442" y="83" width="84" height="18" rx="9" fill="#84B3CE" fill-opacity="0.92" />
+
+  <!-- Left column metric cards inside frame -->
+  <rect x="96" y="128" width="214" height="106" rx="14" fill="#F5EEDD" />
+  <rect x="114" y="146" width="84" height="10" rx="5" fill="#84B3CE" fill-opacity="0.6" />
+  <rect x="114" y="168" width="128" height="18" rx="6" fill="#16587B" />
+  <rect x="114" y="198" width="52" height="18" rx="9" fill="#84B3CE" />
+  <rect x="174" y="202" width="76" height="10" rx="5" fill="#405D6D" fill-opacity="0.45" />
+
+  <rect x="96" y="248" width="214" height="98" rx="14" fill="#FFFFFF" fill-opacity="0.98" />
+  <rect x="114" y="266" width="96" height="10" rx="5" fill="#C9D6DF" />
+  <!-- Cashflow trend bars -->
+  <rect x="116" y="306" width="18" height="24" rx="4" fill="#84B3CE" fill-opacity="0.55" />
+  <rect x="142" y="294" width="18" height="36" rx="4" fill="#84B3CE" fill-opacity="0.80" />
+  <rect x="168" y="286" width="18" height="44" rx="4" fill="#84B3CE" />
+  <rect x="194" y="274" width="18" height="56" rx="4" fill="#16587B" />
+  <rect x="220" y="282" width="18" height="48" rx="4" fill="#84B3CE" />
+  <rect x="246" y="268" width="18" height="62" rx="4" fill="#16587B" />
+
+  <!-- Right column double-entry voucher & tax shield card -->
+  <rect x="326" y="128" width="218" height="218" rx="14" fill="#FFFFFF" />
+  <rect x="346" y="146" width="110" height="12" rx="6" fill="#16587B" />
+  <rect x="346" y="166" width="76" height="8" rx="4" fill="#405D6D" fill-opacity="0.5" />
+
+  <!-- Ledger rows -->
+  <rect x="346" y="190" width="178" height="30" rx="8" fill="#F5EEDD" />
+  <rect x="358" y="201" width="74" height="8" rx="4" fill="#405D6D" fill-opacity="0.75" />
+  <rect x="466" y="201" width="44" height="8" rx="4" fill="#16587B" />
+
+  <rect x="346" y="228" width="178" height="30" rx="8" fill="#F5EEDD" />
+  <rect x="358" y="239" width="84" height="8" rx="4" fill="#405D6D" fill-opacity="0.75" />
+  <rect x="466" y="239" width="44" height="8" rx="4" fill="#16587B" fill-opacity="0.8" />
+
+  <rect x="346" y="266" width="178" height="30" rx="8" fill="#84B3CE" fill-opacity="0.35" />
+  <rect x="358" y="277" width="90" height="8" rx="4" fill="#16587B" />
+  <rect x="466" y="277" width="44" height="8" rx="4" fill="#16587B" />
+
+  <!-- Verified checkmark badge -->
+  <circle cx="510" cy="316" r="18" fill="#16587B" />
+  <path d="M502 316L508 322L519 310" stroke="#F5EEDD" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+</svg>

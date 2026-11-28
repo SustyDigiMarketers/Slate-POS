@@ -1,0 +1,6 @@
+{
+  "name": "SLATE POS — Offline-First Windows POS & Business Suite",
+  "description": "Enterprise-grade offline-first Windows desktop and cloud POS for Indian SMBs and retail chains. Features resilient offline checkout, UPI and cash payments, real-time sync with Supabase PostgreSQL, dual billing & invoice financial dashboards, receivables aging, inventory, and branch management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
